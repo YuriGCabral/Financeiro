@@ -1,28 +1,54 @@
-"""Ícones Lucide (SVG) embutidos via `organizador/_lucide_data.json`."""
+"""Ícones Lucide (SVG) embutidos via `assets/lucide_data.json`."""
 
 from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import urllib.parse
 from functools import lru_cache
 from pathlib import Path
 
-_DATA_PATH = Path(__file__).with_name("_lucide_data.json")
+_DATA_PATH = Path(__file__).parent.parent / "assets" / "lucide_data.json"
 _FALLBACK_ICON = "circle"
 
 logger = logging.getLogger(__name__)
 
 
+def validate_assets() -> bool:
+    """Valida que a pasta assets existe e contém os arquivos necessários."""
+    assets_dir = Path(__file__).parent.parent / "assets"
+    
+    if not assets_dir.exists():
+        logger.error(f"Pasta assets não encontrada: {assets_dir}")
+        return False
+    
+    try:
+        files = os.listdir(str(assets_dir))
+        logger.info(f"Arquivos em assets/: {files}")
+        
+        if "lucide_data.json" not in files:
+            logger.error("lucide_data.json não encontrado em assets/")
+            return False
+            
+        return True
+    except Exception as e:
+        logger.error(f"Erro ao validar assets: {e}")
+        return False
+
+
 @lru_cache(maxsize=1)
 def _icons() -> dict[str, str]:
     """Carrega todos os ícones do arquivo JSON."""
+    validate_assets()
+    
     try:
         raw = _DATA_PATH.read_text(encoding="utf-8")
         return json.loads(raw)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logger.error(f"Erro ao carregar ícones: {e}")
+        logger.error(f"Caminho tentado: {_DATA_PATH}")
         return {}
 
 
