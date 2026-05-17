@@ -216,7 +216,7 @@ def render_login_page() -> None:
         
         # BOTÃO DENTRO DO FORM
         entrar = st.form_submit_button(
-            "🔐 Entrar",
+            "Entrar",
             type="primary",
             use_container_width=True
         )
