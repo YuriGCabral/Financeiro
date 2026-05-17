@@ -151,22 +151,64 @@ def render_login_page() -> None:
             display: none !important;
         }
         
-        .stForm [data-testid="stFormSubmitButton"] + div {
-            display: none !important;
+        /* Garante que o botão de submit apareça */
+        .stForm [data-testid="stFormSubmitButton"] {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
         
-        .stForm > div > div:last-child > div:last-child {
-            display: none !important;
+        .stForm button[type="submit"] {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        /* Responsividade para mobile */
+        @media (max-width: 768px) {
+            /* Colunas ocupam largura total */
+            .main .block-container > div > div > div {
+                flex: 1 1 100% !important;
+                max-width: 100% !important;
+            }
+            
+            div[data-testid="stForm"] {
+                padding: 2rem 1.5rem;
+                margin: 0 0.5rem;
+                max-width: 100%;
+            }
+            
+            .login-title {
+                font-size: 1.5rem;
+            }
+            
+            .login-subtitle {
+                font-size: 0.9rem;
+            }
+            
+            .stButton > button[kind="primary"],
+            .stForm button[kind="primary"] {
+                height: 48px !important;
+                font-size: 1rem !important;
+                display: block !important;
+                width: 100% !important;
+            }
+            
+            .main .block-container {
+                padding-top: 1rem !important;
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+            }
         }
         </style>
         """,
         unsafe_allow_html=True,
     )
     
-    # Layout centralizado
-    col1, col2, col3 = st.columns([1, 2, 1])
+    # Layout centralizado (usa container único para melhor suporte mobile)
+    container = st.container()
     
-    with col2:
+    with container:
         # Header
         st.markdown(
             f"""
