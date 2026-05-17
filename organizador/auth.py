@@ -18,11 +18,15 @@ def get_cookies():
             password="Thalis2002@_secret_key_2026"
         )
     
-    # Verifica se está pronto
-    if not st.session_state.cookies.ready():
-        st.stop()
-    
     return st.session_state.cookies
+
+
+def wait_for_cookies():
+    """Aguarda cookies estar pronto antes de continuar."""
+    cookies = get_cookies()
+    if not cookies.ready():
+        st.stop()
+    return cookies
 
 
 def init_auth_state() -> None:
@@ -37,12 +41,14 @@ def init_auth_state() -> None:
     if "current_user" not in st.session_state:
         st.session_state.current_user = None
     
-    # Tenta restaurar login do cookie
+    # Inicializa cookies (cria singleton mas não bloqueia)
     cookies = get_cookies()
     
-    if cookies.get("logado") == "true" and cookies.get("username") == VALID_USERNAME:
-        st.session_state.logado = True
-        st.session_state.current_user = VALID_USERNAME
+    # Tenta restaurar login do cookie (só se estiver pronto)
+    if cookies.ready():
+        if cookies.get("logado") == "true" and cookies.get("username") == VALID_USERNAME:
+            st.session_state.logado = True
+            st.session_state.current_user = VALID_USERNAME
 
 
 def login(username: str, password: str) -> bool:
@@ -53,7 +59,7 @@ def login(username: str, password: str) -> bool:
         st.session_state.login_error = None
         
         # Salva no cookie para persistência
-        cookies = get_cookies()
+        cookies = wait_for_cookies()
         cookies["logado"] = "true"
         cookies["username"] = username
         cookies.save()
@@ -71,7 +77,7 @@ def logout() -> None:
     st.session_state.login_error = None
     
     # Limpa cookie
-    cookies = get_cookies()
+    cookies = wait_for_cookies()
     cookies["logado"] = "false"
     cookies["username"] = ""
     cookies.save()
