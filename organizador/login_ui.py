@@ -21,8 +21,12 @@ def render_login_page() -> None:
         [data-testid="stSidebar"] { display: none !important; }
         header[data-testid="stHeader"] { display: none !important; }
 
-        /* 🔥 REMOVE A CAIXA FANTASMA (CORREÇÃO) */
-        div[data-testid="stVerticalBlock"] > div:first-child {
+        /* REMOVE CAIXA FLUTUANTE */
+        .main .block-container > div:first-child > div:first-child {
+            display: none !important;
+        }
+        
+        div[data-testid="stVerticalBlock"]:first-child {
             display: none !important;
         }
 
