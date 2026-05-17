@@ -21,8 +21,14 @@ def render_login_page() -> None:
         [data-testid="stSidebar"] { display: none !important; }
         header[data-testid="stHeader"] { display: none !important; }
 
+        /* 🔥 REMOVE A CAIXA FANTASMA (CORREÇÃO) */
+        div[data-testid="stVerticalBlock"] > div:first-child {
+            display: none !important;
+        }
+
         /* CENTRALIZAÇÃO */
         .main .block-container {
+            display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
@@ -108,14 +114,13 @@ def render_login_page() -> None:
             background: transparent !important;
         }
 
-        /* FOCO ANIMADO */
+        /* FOCO */
         div[data-baseweb="input"]:focus-within {
             border-color: var(--pink-500) !important;
             box-shadow: 0 0 0 3px rgba(244,63,94,0.15) !important;
-            transform: scale(1.01);
         }
 
-        /* HOVER SUAVE */
+        /* HOVER */
         div[data-baseweb="input"]:hover {
             border-color: var(--pink-300) !important;
         }
