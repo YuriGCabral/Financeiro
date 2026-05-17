@@ -10,16 +10,19 @@ VALID_PASSWORD = "Thalis2002@"
 
 
 def get_cookies():
-    """Inicializa o gerenciador de cookies."""
-    cookies = EncryptedCookieManager(
-        prefix="clinica_financeira_",
-        password="Thalis2002@_secret_key_2026"
-    )
+    """Retorna singleton do gerenciador de cookies."""
+    # SINGLETON: Cria apenas uma vez e reutiliza
+    if "cookies" not in st.session_state:
+        st.session_state.cookies = EncryptedCookieManager(
+            prefix="clinica_financeira_",
+            password="Thalis2002@_secret_key_2026"
+        )
     
-    if not cookies.ready():
+    # Verifica se está pronto
+    if not st.session_state.cookies.ready():
         st.stop()
     
-    return cookies
+    return st.session_state.cookies
 
 
 def init_auth_state() -> None:
