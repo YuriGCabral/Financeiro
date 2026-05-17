@@ -1,0 +1,14 @@
+[theme]
+primaryColor = "#E11D48"
+backgroundColor = "#FFF7F9"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#111827"
+font = "sans serif"
+
+[server]
+enableCORS = false
+enableXsrfProtection = false
+
+[browser]
+serverAddress = "finance-personalcg.streamlit.app"
+
