@@ -19,18 +19,9 @@ def render_login_page() -> None:
     st.markdown(
         """
         <style>
-        /* Esconde sidebar e header */
         [data-testid="stSidebar"] { display: none !important; }
         header[data-testid="stHeader"] { display: none !important; }
 
-        /* 🔥 REMOVE QUALQUER TEXTO DE SUBMIT (VERSÃO AGRESSIVA) */
-        div[data-testid="stForm"] p,
-        div[data-testid="stForm"] small,
-        div[data-testid="stForm"] span {
-            display: none !important;
-        }
-
-        /* Centraliza */
         .main .block-container {
             display: flex;
             align-items: center;
@@ -39,7 +30,6 @@ def render_login_page() -> None:
             padding-top: 2rem !important;
         }
 
-        /* Card */
         .login-header { text-align: center; margin-bottom: 2rem; }
 
         .login-icon-container {
@@ -73,7 +63,6 @@ def render_login_page() -> None:
             margin-bottom: 2rem;
         }
 
-        /* Inputs */
         .stTextInput input {
             border-radius: var(--radius-control) !important;
             border: 1px solid var(--pink-100) !important;
@@ -84,7 +73,6 @@ def render_login_page() -> None:
             box-shadow: var(--focus-ring) !important;
         }
 
-        /* Botão */
         button[kind="primary"] {
             width: 100% !important;
             height: 52px !important;
@@ -92,15 +80,6 @@ def render_login_page() -> None:
             border-radius: var(--radius-control) !important;
             background: linear-gradient(135deg, var(--pink-600), var(--pink-500)) !important;
             border: none !important;
-        }
-
-        /* Form container */
-        div[data-testid="stForm"] {
-            background: var(--bg-card);
-            border-radius: var(--radius-card);
-            padding: 3rem 2.5rem;
-            max-width: 420px;
-            margin: 0 auto;
         }
         </style>
         """,
@@ -126,17 +105,11 @@ def render_login_page() -> None:
     if st.session_state.get("login_error"):
         st.error(st.session_state.login_error)
     
-    with st.form("login_form"):
-        usuario = st.text_input("Usuário", placeholder="Digite seu nome de usuário")
-        senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+    # 🔥 SEM FORM (acabou o problema)
+    usuario = st.text_input("Usuário", placeholder="Digite seu nome de usuário")
+    senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
 
-        entrar = st.form_submit_button(
-            "Entrar",
-            type="primary",
-            use_container_width=True
-        )
-
-    if entrar:
+    if st.button("Entrar", type="primary", use_container_width=True):
         if not usuario or not senha:
             st.session_state.login_error = "Preencha usuário e senha"
         else:
