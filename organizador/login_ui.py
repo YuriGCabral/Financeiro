@@ -110,14 +110,29 @@ def render_login_page() -> None:
         }
         
         /* Estiliza botão de login */
-        .stButton > button[kind="primary"] {
+        .stButton > button[kind="primary"],
+        .stForm button[kind="primary"] {
             width: 100% !important;
-            height: 48px !important;
-            font-size: 1rem !important;
+            height: 52px !important;
+            font-size: 1.1rem !important;
             font-weight: 600 !important;
             border-radius: var(--radius-control) !important;
-            background: linear-gradient(135deg, var(--pink-500), var(--pink-400)) !important;
+            background: linear-gradient(135deg, var(--pink-600), var(--pink-500)) !important;
             border: none !important;
+            box-shadow: 0 4px 12px rgba(244, 63, 94, 0.25) !important;
+            transition: all 0.2s ease !important;
+            cursor: pointer !important;
+        }
+        
+        .stButton > button[kind="primary"]:hover,
+        .stForm button[kind="primary"]:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 16px rgba(244, 63, 94, 0.35) !important;
+        }
+        
+        .stButton > button[kind="primary"]:active,
+        .stForm button[kind="primary"]:active {
+            transform: translateY(0) !important;
         }
         
         /* Container do formulário */
@@ -173,7 +188,7 @@ def render_login_page() -> None:
             st.error(st.session_state.login_error)
         
         # Form de login
-        with st.form(key="login_form"):
+        with st.form(key="login_form", clear_on_submit=False):
             username = st.text_input(
                 "Usuário",
                 placeholder="Digite seu nome de usuário",
@@ -189,7 +204,11 @@ def render_login_page() -> None:
             
             st.markdown("<br>", unsafe_allow_html=True)
             
-            submitted = st.form_submit_button("Entrar", type="primary", use_container_width=True)
+            submitted = st.form_submit_button(
+                "🔐 Entrar",
+                type="primary",
+                use_container_width=True,
+            )
             
             if submitted:
                 if not username or not password:
