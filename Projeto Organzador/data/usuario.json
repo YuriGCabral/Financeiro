@@ -1,0 +1,86 @@
+{
+  "plantoes": {
+    "2025": {
+      "meses": [
+        "Janeiro",
+        "Fevereiro",
+        "Março",
+        "Abril",
+        "Maio",
+        "Junho",
+        "Julho",
+        "Agosto",
+        "Setembro",
+        "Outubro",
+        "Novembro",
+        "Dezembro"
+      ],
+      "quantidades": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "2026": {
+      "meses": [
+        "Janeiro",
+        "Fevereiro",
+        "Março",
+        "Abril",
+        "Maio",
+        "Junho",
+        "Julho",
+        "Agosto",
+        "Setembro",
+        "Outubro",
+        "Novembro",
+        "Dezembro"
+      ],
+      "quantidades": [
+        0.0,
+        20.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "financas": {
+    "2026-05": [
+      {
+        "titulo": "",
+        "valor": 0.0,
+        "tipo": "Despesa",
+        "resolvido": false
+      }
+    ],
+    "2026-07": [],
+    "2026-12": [],
+    "2027-12": [],
+    "2029-12": [],
+    "2026-01": [],
+    "2026-11": [],
+    "2025-01": [],
+    "2025-06": [],
+    "2026-06": []
+  },
+  "custos_fixos": [],
+  "casamento": [],
+  "casamento_user_initialized": true
+}
