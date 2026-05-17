@@ -23,8 +23,10 @@ def render_login_page() -> None:
         [data-testid="stSidebar"] { display: none !important; }
         header[data-testid="stHeader"] { display: none !important; }
 
-        /* REMOVE "Press Enter to submit" (CORREÇÃO PRINCIPAL) */
-        [data-testid="stForm"] small {
+        /* 🔥 REMOVE QUALQUER TEXTO DE SUBMIT (VERSÃO AGRESSIVA) */
+        div[data-testid="stForm"] p,
+        div[data-testid="stForm"] small,
+        div[data-testid="stForm"] span {
             display: none !important;
         }
 
@@ -55,7 +57,6 @@ def render_login_page() -> None:
             background: linear-gradient(135deg, rgba(244,63,94,0.12), rgba(251,113,133,0.1));
             border: 1px solid var(--pink-100);
             border-radius: 20px;
-            box-shadow: var(--shadow-card);
         }
 
         .login-title {
@@ -122,12 +123,10 @@ def render_login_page() -> None:
         unsafe_allow_html=True,
     )
     
-    # Erro
     if st.session_state.get("login_error"):
         st.error(st.session_state.login_error)
     
-    # FORM
-    with st.form("login_form"):  # 🔥 chave única melhor
+    with st.form("login_form"):
         usuario = st.text_input("Usuário", placeholder="Digite seu nome de usuário")
         senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
 
@@ -137,18 +136,13 @@ def render_login_page() -> None:
             use_container_width=True
         )
 
-    # Lógica
     if entrar:
         if not usuario or not senha:
             st.session_state.login_error = "Preencha usuário e senha"
         else:
-            if login(usuario, senha):
-                st.session_state.login_error = None
-            # erro já é setado dentro do login()
-
+            login(usuario, senha)
         st.rerun()
     
-    # Footer
     st.markdown(
         f"""
         <div class="login-footer">
