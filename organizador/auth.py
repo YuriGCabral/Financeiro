@@ -85,7 +85,7 @@ def logout() -> None:
     st.session_state.current_user = None
     st.session_state.login_error = None
 
-    cookies = get_cookies()
+    #cookies = get_cookies()
 
     if cookies.ready():
         cookies["logado"] = "false"
