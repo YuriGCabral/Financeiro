@@ -11,13 +11,14 @@ from organizador.lucide import inline_svg
 def render_login_page() -> None:
     """Mostra tela de login."""
     
+    # Inicializa autenticação (SEM resetar se já existe)
     init_auth_state()
     
-    # Se já restaurou do localStorage, nem mostra a tela
-    if st.session_state.get("authenticated", False):
+    # Se já está logado, não mostra a tela
+    if st.session_state.get("logado", False):
         return
     
-    # CSS customizado
+    # CSS customizado (SEM esconder botões!)
     st.markdown(
         """
         <style>
@@ -109,9 +110,8 @@ def render_login_page() -> None:
             box-shadow: var(--focus-ring) !important;
         }
         
-        /* Estiliza botão de login */
-        .stButton > button[kind="primary"],
-        .stForm button[kind="primary"] {
+        /* Estiliza botão - GARANTIR VISIBILIDADE */
+        button[kind="primary"] {
             width: 100% !important;
             height: 52px !important;
             font-size: 1.1rem !important;
@@ -122,16 +122,17 @@ def render_login_page() -> None:
             box-shadow: 0 4px 12px rgba(244, 63, 94, 0.25) !important;
             transition: all 0.2s ease !important;
             cursor: pointer !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
         
-        .stButton > button[kind="primary"]:hover,
-        .stForm button[kind="primary"]:hover {
+        button[kind="primary"]:hover {
             transform: translateY(-2px) !important;
             box-shadow: 0 6px 16px rgba(244, 63, 94, 0.35) !important;
         }
         
-        .stButton > button[kind="primary"]:active,
-        .stForm button[kind="primary"]:active {
+        button[kind="primary"]:active {
             transform: translateY(0) !important;
         }
         
@@ -146,32 +147,8 @@ def render_login_page() -> None:
             margin: 0 auto;
         }
         
-        /* Remove mensagens do form */
-        .stForm [data-testid="InputInstructions"] {
-            display: none !important;
-        }
-        
-        /* Garante que o botão de submit apareça */
-        .stForm [data-testid="stFormSubmitButton"] {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-        
-        .stForm button[type="submit"] {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-        
         /* Responsividade para mobile */
         @media (max-width: 768px) {
-            /* Colunas ocupam largura total */
-            .main .block-container > div > div > div {
-                flex: 1 1 100% !important;
-                max-width: 100% !important;
-            }
-            
             div[data-testid="stForm"] {
                 padding: 2rem 1.5rem;
                 margin: 0 0.5rem;
@@ -186,12 +163,9 @@ def render_login_page() -> None:
                 font-size: 0.9rem;
             }
             
-            .stButton > button[kind="primary"],
-            .stForm button[kind="primary"] {
+            button[kind="primary"] {
                 height: 48px !important;
                 font-size: 1rem !important;
-                display: block !important;
-                width: 100% !important;
             }
             
             .main .block-container {
@@ -205,74 +179,70 @@ def render_login_page() -> None:
         unsafe_allow_html=True,
     )
     
-    # Layout centralizado (usa container único para melhor suporte mobile)
-    container = st.container()
+    # Header
+    st.markdown(
+        f"""
+        <div class="login-header">
+            <div class="login-icon-container">
+                <div class="login-icon">
+                    {inline_svg("heart-pulse", 32)}
+                </div>
+            </div>
+            <h1 class="login-title">Clínica Financeira</h1>
+            <p class="login-subtitle">Acesse sua conta para continuar</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     
-    with container:
-        # Header
-        st.markdown(
-            f"""
-            <div class="login-header">
-                <div class="login-icon-container">
-                    <div class="login-icon">
-                        {inline_svg("heart-pulse", 32)}
-                    </div>
-                </div>
-                <h1 class="login-title">Clínica Financeira</h1>
-                <p class="login-subtitle">Acesse sua conta para continuar</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+    # Erro se houver
+    if st.session_state.get("login_error"):
+        st.error(st.session_state.login_error)
+    
+    # ESTRUTURA OBRIGATÓRIA DO FORM
+    with st.form("login"):
+        usuario = st.text_input(
+            "Usuário",
+            placeholder="Digite seu nome de usuário"
         )
         
-        # Erro se houver
-        if st.session_state.get("login_error"):
-            st.error(st.session_state.login_error)
-        
-        # Form de login
-        with st.form(key="login_form", clear_on_submit=False):
-            username = st.text_input(
-                "Usuário",
-                placeholder="Digite seu nome de usuário",
-                key="login_username",
-            )
-            
-            password = st.text_input(
-                "Senha",
-                type="password",
-                placeholder="Digite sua senha",
-                key="login_password",
-            )
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            submitted = st.form_submit_button(
-                "🔐 Entrar",
-                type="primary",
-                use_container_width=True,
-            )
-            
-            if submitted:
-                if not username or not password:
-                    st.session_state.login_error = "Preencha usuário e senha"
-                    st.rerun()
-                else:
-                    success = login(username, password)
-                    if success:
-                        st.session_state.login_error = None
-                        st.rerun()
-                    else:
-                        st.rerun()
-        
-        # Footer
-        st.markdown(
-            f"""
-            <div class="login-footer">
-                <div class="login-footer-text">
-                    {inline_svg("info", 16)}
-                    <span>Acesso restrito a usuários autorizados</span>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        senha = st.text_input(
+            "Senha",
+            type="password",
+            placeholder="Digite sua senha"
         )
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # BOTÃO DENTRO DO FORM
+        entrar = st.form_submit_button(
+            "🔐 Entrar",
+            type="primary",
+            use_container_width=True
+        )
+    
+    # LÓGICA FORA DO FORM
+    if entrar:
+        if not usuario or not senha:
+            st.session_state.login_error = "Preencha usuário e senha"
+            st.rerun()
+        else:
+            success = login(usuario, senha)
+            if success:
+                st.session_state.login_error = None
+                st.rerun()
+            else:
+                st.rerun()
+    
+    # Footer
+    st.markdown(
+        f"""
+        <div class="login-footer">
+            <div class="login-footer-text">
+                {inline_svg("info", 16)}
+                <span>Acesso restrito a usuários autorizados</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )

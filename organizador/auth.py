@@ -1,70 +1,79 @@
-"""Sistema de autenticação."""
+"""Sistema de autenticação com cookies."""
 
 from __future__ import annotations
 
 import streamlit as st
-
-from organizador.storage import (
-    clear_auth_from_storage,
-    get_stored_auth,
-    save_auth_to_storage,
-    validate_auth_token,
-)
+from streamlit_cookies_manager import EncryptedCookieManager
 
 VALID_USERNAME = "Carol Gomes"
 VALID_PASSWORD = "Thalis2002@"
 
 
+def get_cookies():
+    """Inicializa o gerenciador de cookies."""
+    cookies = EncryptedCookieManager(
+        prefix="clinica_financeira_",
+        password="Thalis2002@_secret_key_2026"
+    )
+    
+    if not cookies.ready():
+        st.stop()
+    
+    return cookies
+
+
 def init_auth_state() -> None:
-    """Inicializa autenticação e tenta restaurar sessão salva."""
-    if "auth_initialized" not in st.session_state:
-        st.session_state.auth_initialized = True
-        st.session_state.authenticated = False
+    """Inicializa estado de autenticação SEM resetar."""
+    # CRÍTICO: Só inicializa se NÃO existir
+    if "logado" not in st.session_state:
+        st.session_state.logado = False
+    
+    if "login_error" not in st.session_state:
         st.session_state.login_error = None
-        
-        # Tenta recuperar autenticação salva
-        stored_username, stored_token = get_stored_auth()
-        
-        # Se encontrou dados salvos, valida e restaura sessão
-        if stored_username and stored_token:
-            if validate_auth_token(stored_username, stored_token) and stored_username == VALID_USERNAME:
-                st.session_state.authenticated = True
-                st.session_state.current_user = stored_username
-
-
-def authenticate(username: str, password: str) -> bool:
-    """Valida usuário e senha."""
-    return username == VALID_USERNAME and password == VALID_PASSWORD
+    
+    if "current_user" not in st.session_state:
+        st.session_state.current_user = None
+    
+    # Tenta restaurar login do cookie
+    cookies = get_cookies()
+    
+    if cookies.get("logado") == "true" and cookies.get("username") == VALID_USERNAME:
+        st.session_state.logado = True
+        st.session_state.current_user = VALID_USERNAME
 
 
 def login(username: str, password: str) -> bool:
-    """Faz login e salva sessão no navegador."""
-    if authenticate(username, password):
-        st.session_state.authenticated = True
+    """Faz login e salva no cookie."""
+    if username == VALID_USERNAME and password == VALID_PASSWORD:
+        st.session_state.logado = True
         st.session_state.current_user = username
         st.session_state.login_error = None
         
-        # Salva no localStorage para persistência
-        save_auth_to_storage(username)
+        # Salva no cookie para persistência
+        cookies = get_cookies()
+        cookies["logado"] = "true"
+        cookies["username"] = username
+        cookies.save()
         
         return True
     else:
-        st.session_state.authenticated = False
         st.session_state.login_error = "Usuário ou senha incorretos"
         return False
 
 
 def logout() -> None:
-    """Faz logout e limpa todos os dados da sessão."""
-    st.session_state.authenticated = False
+    """Faz logout e limpa cookie."""
+    st.session_state.logado = False
+    st.session_state.current_user = None
     st.session_state.login_error = None
     
-    if "current_user" in st.session_state:
-        del st.session_state.current_user
+    # Limpa cookie
+    cookies = get_cookies()
+    cookies["logado"] = "false"
+    cookies["username"] = ""
+    cookies.save()
     
-    clear_auth_from_storage()
-    
-    # Limpa tudo para forçar reload no próximo login
+    # Limpa dados das páginas
     keys_to_clear = [
         "plantoes_initialized",
         "plantoes_data",
@@ -76,10 +85,6 @@ def logout() -> None:
         "selected_ano",
         "casamento_initialized",
         "casamento_data",
-        "auth_initialized",
-        "_stored_auth_loaded",
-        "_stored_username",
-        "_stored_token",
     ]
     
     for key in keys_to_clear:
@@ -89,11 +94,11 @@ def logout() -> None:
 
 def is_authenticated() -> bool:
     """Checa se está logado."""
-    return st.session_state.get("authenticated", False)
+    return st.session_state.get("logado", False)
 
 
 def require_auth() -> bool:
-    """Verifica autenticação (para usar nas páginas)."""
+    """Verifica autenticação nas páginas."""
     if not is_authenticated():
         st.warning("Você precisa fazer login primeiro.")
         st.stop()
