@@ -81,6 +81,11 @@ class PlantoesSheetState:
 
 def read_plantoes_sheet(path: Path, sheet_name: str) -> PlantoesSheetState:
     """Lê quantidades de plantões de uma aba do Excel."""
+    wb = openpyxl.load_workbook(path, data_only=True)
+    if sheet_name not in wb.sheetnames:
+        raise ValueError(f"Aba inexistente: {sheet_name}")
+    ws = wb[sheet_name]
+    
     meses: list[str] = []
     plantoes: list[float] = []
     for r in MONTH_ROWS:
