@@ -30,17 +30,7 @@ def render_login_page() -> None:
             padding: 0 !important;
         }
 
-        /* CARD */
-        .login-card {
-            width: 100%;
-            max-width: 420px;
-            padding: 2.5rem 2.2rem;
-            border-radius: 18px;
-            background: var(--bg-card);
-            border: 1px solid var(--pink-100);
-            box-shadow: var(--shadow-pink);
-            transition: all 0.25s ease;
-        }
+       
 
         .login-card:hover {
             transform: translateY(-2px);
