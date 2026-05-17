@@ -23,7 +23,6 @@ def render_login_page() -> None:
 
         /* CENTRALIZAÇÃO */
         .main .block-container {
-            display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
