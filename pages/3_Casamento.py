@@ -196,7 +196,7 @@ with ui_card("Orçamento do Casamento", "Gerencie fornecedores, valores e pagame
                     width="small",
                 ),
                 "É Entrada?": st.column_config.CheckboxColumn(
-                    "💰 Entrada",
+                    "Entrada",
                     help="Marque se é dinheiro recebido (presente/contribuição). Desconta do A Pagar.",
                     default=False,
                     width="small",
