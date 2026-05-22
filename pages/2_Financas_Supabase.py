@@ -67,12 +67,13 @@ with tab_lancamentos:
         ano_selecionado = form_select_ano()
     
     with col_filtro3:
-        if st.button("Gerar Lançamentos Automáticos", type="secondary"):
-            if gerar_lancamentos_automaticos(ano_selecionado, mes_selecionado):
-                st.success("Lançamentos automáticos gerados!")
+        if st.button("🔄 Gerar Lançamentos Automáticos", type="secondary"):
+            try:
+                gerar_lancamentos_automaticos(ano_selecionado, mes_selecionado)
+                st.success("✅ Lançamentos automáticos gerados!")
                 st.rerun()
-            else:
-                st.error("Erro ao gerar lançamentos.")
+            except Exception as e:
+                st.error(f"❌ {str(e)}")
     
     # Carregar finanças
     df_financas = load_financas(ano=ano_selecionado, mes=mes_selecionado)
@@ -127,20 +128,23 @@ with tab_lancamentos:
             elif valor <= 0:
                 st.error("Valor deve ser maior que zero.")
             else:
-                novo_lancamento = {
-                    "ano": data_lancamento.year,
-                    "mes": data_lancamento.month,
-                    "data": str(data_lancamento),
-                    "descricao": descricao,
-                    "tipo": tipo,
-                    "valor": valor,
-                    "entrada": entrada,
-                    "categoria": categoria
-                }
-                
-                if insert_financa(novo_lancamento):
-                    st.success("Lançamento salvo!")
+                try:
+                    novo_lancamento = {
+                        "ano": data_lancamento.year,
+                        "mes": data_lancamento.month,
+                        "data": str(data_lancamento),
+                        "descricao": descricao,
+                        "tipo": tipo,
+                        "valor": valor,
+                        "entrada": entrada,
+                        "categoria": categoria
+                    }
+                    
+                    insert_financa(novo_lancamento)
+                    st.success("✅ Lançamento salvo!")
                     st.rerun()
+                except Exception as e:
+                    st.error(f"❌ {str(e)}")
     
     # Edição/Exclusão
     if not df_financas.empty:
@@ -182,23 +186,29 @@ with tab_lancamentos:
                     submitted_edit = st.form_submit_button("💾 Atualizar")
                     
                     if submitted_edit:
-                        dados_atualizados = {
-                            "descricao": nova_descricao,
-                            "tipo": novo_tipo,
-                            "valor": novo_valor,
-                            "entrada": nova_entrada
-                        }
-                        
-                        if update_financa(lancamento_atual["id"], dados_atualizados):
-                            st.success("Lançamento atualizado!")
+                        try:
+                            dados_atualizados = {
+                                "descricao": nova_descricao,
+                                "tipo": novo_tipo,
+                                "valor": novo_valor,
+                                "entrada": nova_entrada
+                            }
+                            
+                            update_financa(lancamento_atual["id"], dados_atualizados)
+                            st.success("✅ Lançamento atualizado!")
                             st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ {str(e)}")
             
             with col_delete:
                 st.markdown("**Excluir**")
-                if st.button("Deletar", type="secondary", key="btn_delete_lancamento"):
-                    if delete_financa(lancamento_atual["id"]):
-                        st.success("Lançamento excluído!")
+                if st.button("🗑️ Deletar", type="secondary", key="btn_delete_lancamento"):
+                    try:
+                        delete_financa(lancamento_atual["id"])
+                        st.success("✅ Lançamento excluído!")
                         st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ {str(e)}")
 
 # ========================================
 # TAB 2: CUSTOS FIXOS
@@ -255,20 +265,23 @@ with tab_custos:
             elif valor_custo <= 0:
                 st.error("Valor deve ser maior que zero.")
             else:
-                novo_custo = {
-                    "descricao": descricao_custo,
-                    "tipo": tipo_custo,
-                    "valor": valor_custo,
-                    "entrada": entrada_custo,
-                    "dia_vencimento": dia_vencimento,
-                    "parcela_atual": 1,
-                    "total_parcelas": total_parcelas,
-                    "ativo": ativo
-                }
-                
-                if insert_custo_fixo(novo_custo):
-                    st.success("Custo fixo salvo!")
+                try:
+                    novo_custo = {
+                        "descricao": descricao_custo,
+                        "tipo": tipo_custo,
+                        "valor": valor_custo,
+                        "entrada": entrada_custo,
+                        "dia_vencimento": dia_vencimento,
+                        "parcela_atual": 1,
+                        "total_parcelas": total_parcelas,
+                        "ativo": ativo
+                    }
+                    
+                    insert_custo_fixo(novo_custo)
+                    st.success("✅ Custo fixo salvo!")
                     st.rerun()
+                except Exception as e:
+                    st.error(f"❌ {str(e)}")
     
     # Edição de custos fixos
     if not df_custos.empty:
@@ -307,20 +320,26 @@ with tab_custos:
                     submitted_edit_custo = st.form_submit_button("Atualizar")
                     
                     if submitted_edit_custo:
-                        dados_custo_atualizados = {
-                            "valor": novo_valor_custo,
-                            "ativo": novo_ativo,
-                            "parcela_atual": nova_parcela_atual,
-                            "entrada": nova_entrada_custo
-                        }
-                        
-                        if update_custo_fixo(custo_atual["id"], dados_custo_atualizados):
-                            st.success("Custo fixo atualizado!")
+                        try:
+                            dados_custo_atualizados = {
+                                "valor": novo_valor_custo,
+                                "ativo": novo_ativo,
+                                "parcela_atual": nova_parcela_atual,
+                                "entrada": nova_entrada_custo
+                            }
+                            
+                            update_custo_fixo(custo_atual["id"], dados_custo_atualizados)
+                            st.success("✅ Custo fixo atualizado!")
                             st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ {str(e)}")
             
             with col_delete_custo:
                 st.markdown("**Excluir**")
-                if st.button("Deletar", type="secondary", key="btn_delete_custo"):
-                    if delete_custo_fixo(custo_atual["id"]):
-                        st.success("Custo fixo excluído!")
+                if st.button("🗑️ Deletar", type="secondary", key="btn_delete_custo"):
+                    try:
+                        delete_custo_fixo(custo_atual["id"])
+                        st.success("✅ Custo fixo excluído!")
                         st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ {str(e)}")

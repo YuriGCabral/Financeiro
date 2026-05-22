@@ -18,65 +18,56 @@ def load_custos_fixos() -> pd.DataFrame:
         response = supabase.table("custos_fixos").select("*").order("descricao").execute()
         
         if response.data:
-            df = pd.DataFrame(response.data)
-            return df
+            return pd.DataFrame(response.data)
         else:
             return pd.DataFrame(columns=[
                 "id", "descricao", "tipo", "valor", "entrada", "dia_vencimento",
                 "parcela_atual", "total_parcelas", "ativo", "created_at"
             ])
     except Exception as e:
-        st.error(f"Erro ao carregar custos fixos: {e}")
-        return pd.DataFrame()
+        raise Exception(f"Erro ao carregar custos fixos: {e}")
 
 
-def insert_custo_fixo(data: dict[str, Any]) -> bool:
+def insert_custo_fixo(data: dict[str, Any]) -> None:
     """Insere novo custo fixo."""
     supabase: Client = get_supabase_client()
     
     try:
-        response = supabase.table("custos_fixos").insert(data).execute()
-        return True
+        supabase.table("custos_fixos").insert(data).execute()
     except Exception as e:
-        st.error(f"Erro ao inserir custo fixo: {e}")
-        return False
+        raise Exception(f"Erro ao inserir custo fixo: {e}")
 
 
-def update_custo_fixo(custo_id: int, data: dict[str, Any]) -> bool:
+def update_custo_fixo(custo_id: int, data: dict[str, Any]) -> None:
     """Atualiza custo fixo existente."""
     supabase: Client = get_supabase_client()
     
     try:
-        response = supabase.table("custos_fixos").update(data).eq("id", custo_id).execute()
-        return True
+        supabase.table("custos_fixos").update(data).eq("id", custo_id).execute()
     except Exception as e:
-        st.error(f"Erro ao atualizar custo fixo: {e}")
-        return False
+        raise Exception(f"Erro ao atualizar custo fixo: {e}")
 
 
-def delete_custo_fixo(custo_id: int) -> bool:
+def delete_custo_fixo(custo_id: int) -> None:
     """Deleta custo fixo."""
     supabase: Client = get_supabase_client()
     
     try:
-        response = supabase.table("custos_fixos").delete().eq("id", custo_id).execute()
-        return True
+        supabase.table("custos_fixos").delete().eq("id", custo_id).execute()
     except Exception as e:
-        st.error(f"Erro ao deletar custo fixo: {e}")
-        return False
+        raise Exception(f"Erro ao deletar custo fixo: {e}")
 
 
-def gerar_lancamentos_automaticos(ano: int, mes: int) -> bool:
+def gerar_lancamentos_automaticos(ano: int, mes: int) -> None:
     """Gera lançamentos automáticos em finanças baseado nos custos fixos ativos."""
     custos_fixos = load_custos_fixos()
     
     if custos_fixos.empty:
-        return True
+        return
     
     # Filtra apenas custos ativos
     custos_ativos = custos_fixos[custos_fixos["ativo"] == True]
     
-    sucesso = True
     for _, custo in custos_ativos.iterrows():
         # Verifica se é parcelado e se ainda tem parcelas
         if custo["tipo"] == "parcelado":
@@ -95,8 +86,7 @@ def gerar_lancamentos_automaticos(ano: int, mes: int) -> bool:
             "categoria": "Custo Fixo"
         }
         
-        if not insert_financa(lancamento):
-            sucesso = False
+        insert_financa(lancamento)
         
         # Se parcelado, incrementa parcela_atual
         if custo["tipo"] == "parcelado":
@@ -111,5 +101,3 @@ def gerar_lancamentos_automaticos(ano: int, mes: int) -> bool:
                 update_custo_fixo(custo["id"], {
                     "parcela_atual": nova_parcela
                 })
-    
-    return sucesso

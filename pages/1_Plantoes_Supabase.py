@@ -111,22 +111,22 @@ with st.form("form_novo_plantao"):
         elif valor_bruto <= 0:
             st.error("Valor bruto deve ser maior que zero.")
         else:
-            # Inserir no Supabase
-            novo_plantao = {
-                "ano": ano_selecionado,
-                "mes": mes,
-                "quantidade": quantidade,
-                "valor_bruto": valor_bruto,
-                "imposto": imposto,
-                "valor_liquido": valor_liquido,
-                "entrada": entrada
-            }
-            
-            if insert_plantao(novo_plantao):
-                st.success("Plantão salvo com sucesso!")
+            try:
+                novo_plantao = {
+                    "ano": ano_selecionado,
+                    "mes": mes,
+                    "quantidade": quantidade,
+                    "valor_bruto": valor_bruto,
+                    "imposto": imposto,
+                    "valor_liquido": valor_liquido,
+                    "entrada": entrada
+                }
+                
+                insert_plantao(novo_plantao)
+                st.success("✅ Plantão salvo com sucesso!")
                 st.rerun()
-            else:
-                st.error("Erro ao salvar plantão.")
+            except Exception as e:
+                st.error(f"❌ {str(e)}")
 
 # ========== 5. EDIÇÃO/EXCLUSÃO ==========
 if not df_plantoes.empty:
@@ -177,21 +177,27 @@ if not df_plantoes.empty:
                 submitted_edit = st.form_submit_button("Atualizar", type="primary")
                 
                 if submitted_edit:
-                    dados_atualizados = {
-                        "quantidade": nova_quantidade,
-                        "valor_bruto": novo_valor_bruto,
-                        "imposto": novo_imposto,
-                        "valor_liquido": novo_valor_liquido,
-                        "entrada": nova_entrada
-                    }
-                    
-                    if update_plantao(plantao_atual["id"], dados_atualizados):
-                        st.success("Plantão atualizado!")
+                    try:
+                        dados_atualizados = {
+                            "quantidade": nova_quantidade,
+                            "valor_bruto": novo_valor_bruto,
+                            "imposto": novo_imposto,
+                            "valor_liquido": novo_valor_liquido,
+                            "entrada": nova_entrada
+                        }
+                        
+                        update_plantao(plantao_atual["id"], dados_atualizados)
+                        st.success("✅ Plantão atualizado!")
                         st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ {str(e)}")
         
         with col_delete:
             st.markdown("**Excluir**")
-            if st.button("Deletar Plantão", type="secondary", key="btn_delete_plantao"):
-                if delete_plantao(plantao_atual["id"]):
-                    st.success("Plantão excluído!")
+            if st.button("🗑️ Deletar Plantão", type="secondary", key="btn_delete_plantao"):
+                try:
+                    delete_plantao(plantao_atual["id"])
+                    st.success("✅ Plantão excluído!")
                     st.rerun()
+                except Exception as e:
+                    st.error(f"❌ {str(e)}")

@@ -24,49 +24,41 @@ def load_financas(ano: int | None = None, mes: int | None = None) -> pd.DataFram
         response = query.order("data", desc=True).execute()
         
         if response.data:
-            df = pd.DataFrame(response.data)
-            return df
+            return pd.DataFrame(response.data)
         else:
             return pd.DataFrame(columns=[
                 "id", "ano", "mes", "data", "descricao", "tipo", 
                 "valor", "entrada", "categoria", "created_at"
             ])
     except Exception as e:
-        st.error(f"Erro ao carregar finanças: {e}")
-        return pd.DataFrame()
+        raise Exception(f"Erro ao carregar finanças: {e}")
 
 
-def insert_financa(data: dict[str, Any]) -> bool:
+def insert_financa(data: dict[str, Any]) -> None:
     """Insere novo lançamento financeiro."""
     supabase: Client = get_supabase_client()
     
     try:
-        response = supabase.table("financas").insert(data).execute()
-        return True
+        supabase.table("financas").insert(data).execute()
     except Exception as e:
-        st.error(f"Erro ao inserir lançamento: {e}")
-        return False
+        raise Exception(f"Erro ao inserir lançamento: {e}")
 
 
-def update_financa(financa_id: int, data: dict[str, Any]) -> bool:
+def update_financa(financa_id: int, data: dict[str, Any]) -> None:
     """Atualiza lançamento financeiro existente."""
     supabase: Client = get_supabase_client()
     
     try:
-        response = supabase.table("financas").update(data).eq("id", financa_id).execute()
-        return True
+        supabase.table("financas").update(data).eq("id", financa_id).execute()
     except Exception as e:
-        st.error(f"Erro ao atualizar lançamento: {e}")
-        return False
+        raise Exception(f"Erro ao atualizar lançamento: {e}")
 
 
-def delete_financa(financa_id: int) -> bool:
+def delete_financa(financa_id: int) -> None:
     """Deleta lançamento financeiro."""
     supabase: Client = get_supabase_client()
     
     try:
-        response = supabase.table("financas").delete().eq("id", financa_id).execute()
-        return True
+        supabase.table("financas").delete().eq("id", financa_id).execute()
     except Exception as e:
-        st.error(f"Erro ao deletar lançamento: {e}")
-        return False
+        raise Exception(f"Erro ao deletar lançamento: {e}")

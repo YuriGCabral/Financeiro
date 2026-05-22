@@ -22,49 +22,41 @@ def load_plantoes(ano: int | None = None) -> pd.DataFrame:
         response = query.order("ano", desc=True).order("mes").execute()
         
         if response.data:
-            df = pd.DataFrame(response.data)
-            return df
+            return pd.DataFrame(response.data)
         else:
             return pd.DataFrame(columns=[
                 "id", "ano", "mes", "quantidade", "valor_bruto", 
                 "imposto", "valor_liquido", "entrada", "created_at"
             ])
     except Exception as e:
-        st.error(f"Erro ao carregar plantões: {e}")
-        return pd.DataFrame()
+        raise Exception(f"Erro ao carregar plantões: {e}")
 
 
-def insert_plantao(data: dict[str, Any]) -> bool:
+def insert_plantao(data: dict[str, Any]) -> None:
     """Insere novo plantão no Supabase."""
     supabase: Client = get_supabase_client()
     
     try:
-        response = supabase.table("plantoes").insert(data).execute()
-        return True
+        supabase.table("plantoes").insert(data).execute()
     except Exception as e:
-        st.error(f"Erro ao inserir plantão: {e}")
-        return False
+        raise Exception(f"Erro ao inserir plantão: {e}")
 
 
-def update_plantao(plantao_id: int, data: dict[str, Any]) -> bool:
+def update_plantao(plantao_id: int, data: dict[str, Any]) -> None:
     """Atualiza plantão existente."""
     supabase: Client = get_supabase_client()
     
     try:
-        response = supabase.table("plantoes").update(data).eq("id", plantao_id).execute()
-        return True
+        supabase.table("plantoes").update(data).eq("id", plantao_id).execute()
     except Exception as e:
-        st.error(f"Erro ao atualizar plantão: {e}")
-        return False
+        raise Exception(f"Erro ao atualizar plantão: {e}")
 
 
-def delete_plantao(plantao_id: int) -> bool:
+def delete_plantao(plantao_id: int) -> None:
     """Deleta plantão do Supabase."""
     supabase: Client = get_supabase_client()
     
     try:
-        response = supabase.table("plantoes").delete().eq("id", plantao_id).execute()
-        return True
+        supabase.table("plantoes").delete().eq("id", plantao_id).execute()
     except Exception as e:
-        st.error(f"Erro ao deletar plantão: {e}")
-        return False
+        raise Exception(f"Erro ao deletar plantão: {e}")
