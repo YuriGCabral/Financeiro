@@ -58,6 +58,7 @@ if "casamento_initialized" not in st.session_state:
                     "categoria": str(row["categoria"]),
                     "orcamento": float(row["orcamento"]),
                     "valor_fechado": float(row["valor_pago"]),
+                    "entrada": bool(row.get("entrada", False)),
                     "parcelas": 1,
                     "pago": row["status"] == "pago",
                 })
@@ -69,6 +70,7 @@ if "casamento_initialized" not in st.session_state:
                     "categoria": "Alimentação",
                     "orcamento": 15000.0,
                     "valor_fechado": 0.0,
+                    "entrada": False,
                     "parcelas": 1,
                     "pago": False,
                 },
@@ -77,6 +79,7 @@ if "casamento_initialized" not in st.session_state:
                     "categoria": "Decoração",
                     "orcamento": 8000.0,
                     "valor_fechado": 0.0,
+                    "entrada": False,
                     "parcelas": 1,
                     "pago": False,
                 },
@@ -85,6 +88,7 @@ if "casamento_initialized" not in st.session_state:
                     "categoria": "Foto/Vídeo",
                     "orcamento": 5000.0,
                     "valor_fechado": 0.0,
+                    "entrada": False,
                     "parcelas": 1,
                     "pago": False,
                 },
@@ -120,6 +124,7 @@ if casamento_data:
             "Categoria": str(r.get("categoria", "Outros")),
             "Orçamento (R$)": float(r.get("orcamento", 0.0)),
             "Valor Fechado (R$)": float(r.get("valor_fechado", 0.0)),
+            "É Entrada?": bool(r.get("entrada", False)),
             "Parcelas": int(r.get("parcelas", 1)),
             "✓ Pago": bool(r.get("pago", False)),
         })
@@ -130,6 +135,7 @@ else:
         "Categoria": "Outros",
         "Orçamento (R$)": 0.0,
         "Valor Fechado (R$)": 0.0,
+        "É Entrada?": False,
         "Parcelas": 1,
         "✓ Pago": False,
     }])
@@ -137,13 +143,14 @@ else:
 # Garante tipos corretos
 df_casamento["Orçamento (R$)"] = pd.to_numeric(df_casamento["Orçamento (R$)"], errors="coerce").fillna(0.0)
 df_casamento["Valor Fechado (R$)"] = pd.to_numeric(df_casamento["Valor Fechado (R$)"], errors="coerce").fillna(0.0)
+df_casamento["É Entrada?"] = df_casamento["É Entrada?"].astype(bool)
 df_casamento["Parcelas"] = pd.to_numeric(df_casamento["Parcelas"], errors="coerce").fillna(1).astype(int).clip(1, 100)
 df_casamento["✓ Pago"] = df_casamento["✓ Pago"].astype(bool)
 df_casamento["Fornecedor/Item"] = df_casamento["Fornecedor/Item"].astype(str)
 df_casamento["Categoria"] = df_casamento["Categoria"].astype(str)
 
 with ui_card("Orçamento do Casamento", "Gerencie fornecedores, valores e pagamentos.", lucide="clipboard-list"):
-    help_html = f'<div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;"><span style="color: var(--text-secondary); font-size: 0.875rem;">{inline_svg("info", 16)} <strong>Orçamento</strong> = valor estimado | <strong>Valor Fechado</strong> = contrato assinado | <strong>Parcelas</strong> = quantidade de pagamentos</span></div>'
+    help_html = f'<div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;"><span style="color: var(--text-secondary); font-size: 0.875rem;">{inline_svg("info", 16)} <strong>Orçamento</strong> = valor estimado | <strong>Valor Fechado</strong> = contrato assinado | <strong>É Entrada?</strong> = dinheiro recebido (presente) | <strong>Parcelas</strong> = qtd pagamentos</span></div>'
     st.markdown(help_html, unsafe_allow_html=True)
     
     with st.form(key="form_casamento"):
@@ -188,6 +195,12 @@ with ui_card("Orçamento do Casamento", "Gerencie fornecedores, valores e pagame
                     help="Valor real do contrato assinado (0 = ainda não fechou)",
                     width="small",
                 ),
+                "É Entrada?": st.column_config.CheckboxColumn(
+                    "💰 Entrada",
+                    help="Marque se é dinheiro recebido (presente/contribuição). Desconta do A Pagar.",
+                    default=False,
+                    width="small",
+                ),
                 "Parcelas": st.column_config.NumberColumn(
                     "Parcelas",
                     min_value=1,
@@ -219,14 +232,15 @@ with ui_card("Orçamento do Casamento", "Gerencie fornecedores, valores e pagame
                     if categoria not in CATEGORIAS:
                         categoria = "Outros"
                     
-                    records_casamento.append({
-                        "titulo": str(row.get("Fornecedor/Item", "")).strip(),
-                        "categoria": categoria,
-                        "orcamento": float(row.get("Orçamento (R$)", 0.0)),
-                        "valor_fechado": float(row.get("Valor Fechado (R$)", 0.0)),
-                        "parcelas": int(row.get("Parcelas", 1)),
-                        "pago": bool(row.get("✓ Pago", False)),
-                    })
+                records_casamento.append({
+                    "titulo": str(row.get("Fornecedor/Item", "")).strip(),
+                    "categoria": categoria,
+                    "orcamento": float(row.get("Orçamento (R$)", 0.0)),
+                    "valor_fechado": float(row.get("Valor Fechado (R$)", 0.0)),
+                    "entrada": bool(row.get("É Entrada?", False)),
+                    "parcelas": int(row.get("Parcelas", 1)),
+                    "pago": bool(row.get("✓ Pago", False)),
+                })
                 
                 # Atualiza session_state
                 st.session_state.casamento_data = records_casamento.copy()
@@ -246,7 +260,7 @@ with ui_card("Orçamento do Casamento", "Gerencie fornecedores, valores e pagame
                             "item": rec["titulo"],
                             "orcamento": float(rec["orcamento"]),
                             "valor_pago": float(rec["valor_fechado"]),
-                            "entrada": False,
+                            "entrada": bool(rec["entrada"]),
                             "status": status,
                             "observacoes": ""
                         }
@@ -267,6 +281,7 @@ if display_data:
             "Categoria": str(r.get("categoria", "Outros")),
             "Orçamento (R$)": float(r.get("orcamento", 0.0)),
             "Valor Fechado (R$)": float(r.get("valor_fechado", 0.0)),
+            "É Entrada?": bool(r.get("entrada", False)),
             "Parcelas": int(r.get("parcelas", 1)),
             "✓ Pago": bool(r.get("pago", False)),
         })
@@ -277,30 +292,37 @@ else:
         "Categoria": "Outros",
         "Orçamento (R$)": 0.0,
         "Valor Fechado (R$)": 0.0,
+        "É Entrada?": False,
         "Parcelas": 1,
         "✓ Pago": False,
     }])
 
-# Total orçado
-total_orcamento = df_display["Orçamento (R$)"].sum()
+# Total orçado (só despesas, não conta entradas)
+df_despesas = df_display[df_display["É Entrada?"] == False]
+total_orcamento = df_despesas["Orçamento (R$)"].sum()
 
-# Total fechado (contratos assinados)
-total_fechado = df_display["Valor Fechado (R$)"].sum()
+# Total fechado (contratos assinados - só despesas)
+total_fechado = df_despesas["Valor Fechado (R$)"].sum()
 
-# Total pago (itens marcados como pagos)
-df_pagos = df_display[df_display["✓ Pago"] == True]
+# Total de entradas (dinheiro recebido)
+df_entradas = df_display[df_display["É Entrada?"] == True]
+total_entradas = df_entradas["Valor Fechado (R$)"].sum()
+
+# Total pago (despesas marcadas como pagas)
+df_pagos = df_display[(df_display["✓ Pago"] == True) & (df_display["É Entrada?"] == False)]
 total_pago = df_pagos["Valor Fechado (R$)"].sum()
 
-# A pagar (fechados mas não pagos)
-df_a_pagar = df_display[(df_display["Valor Fechado (R$)"] > 0) & (df_display["✓ Pago"] == False)]
-total_a_pagar = df_a_pagar["Valor Fechado (R$)"].sum()
+# A pagar (fechados mas não pagos - descontando entradas)
+df_a_pagar = df_display[(df_display["Valor Fechado (R$)"] > 0) & (df_display["✓ Pago"] == False) & (df_display["É Entrada?"] == False)]
+total_a_pagar_bruto = df_a_pagar["Valor Fechado (R$)"].sum()
+total_a_pagar = total_a_pagar_bruto - total_entradas
 
 # Diferença orçamento vs fechado
 diferenca = total_fechado - total_orcamento
 
-# Itens não fechados ainda
-itens_nao_fechados = len(df_display[df_display["Valor Fechado (R$)"] == 0])
-itens_totais = len(df_display)
+# Itens não fechados ainda (só despesas)
+itens_nao_fechados = len(df_despesas[df_despesas["Valor Fechado (R$)"] == 0])
+itens_totais = len(df_despesas)
 itens_fechados = itens_totais - itens_nao_fechados
 
 with ui_card("Resumo Financeiro", "Visão geral do investimento no casamento.", lucide="bar-chart-3"):
@@ -311,8 +333,8 @@ with ui_card("Resumo Financeiro", "Visão geral do investimento no casamento.", 
     )
     
     render_kpi_row(
-        ("A Pagar", format_brl(total_a_pagar), "neg" if total_a_pagar > 0 else ""),
-        ("Variação", format_brl(diferenca), "pos" if diferenca <= 0 else "neg"),
+        ("💰 Entradas", format_brl(total_entradas), "pos" if total_entradas > 0 else ""),
+        ("A Pagar", format_brl(total_a_pagar), "neg" if total_a_pagar > 0 else "pos"),
         ("Contratos", f"{itens_fechados}/{itens_totais}", "accent"),
     )
 

@@ -192,7 +192,7 @@ with st.expander("Custos fixos e parcelados (todos os meses)", expanded=False):
         )
         table_wrap_end()
         
-        submitted_cf = st.form_submit_button("💾 Salvar custos fixos", type="primary")
+        submitted_cf = st.form_submit_button("Salvar alterações", type="primary")
         
         if submitted_cf:
             try:
@@ -313,7 +313,7 @@ with ui_card("Lançamentos do mês", "Adicione receitas e despesas e clique em S
         
         table_wrap_end()
         
-        submitted_lanc = st.form_submit_button("💾 Salvar lançamentos", type="primary")
+        submitted_lanc = st.form_submit_button("Salvar alterações", type="primary")
         
         if submitted_lanc:
             try:
