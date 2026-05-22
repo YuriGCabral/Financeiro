@@ -6,7 +6,6 @@ import streamlit as st
 from organizador.auth import init_auth_state, is_authenticated, logout
 from organizador.financas_table import format_brl
 from organizador.plantoes import dataframe_resumo
-from organizador.store import load_store, save_store
 from organizador.ui import (
     inject_dashboard_theme,
     page_header,
@@ -16,6 +15,7 @@ from organizador.ui import (
     table_wrap_end,
     ui_card,
 )
+from services.plantoes_service import load_plantoes, insert_plantao, update_plantao
 
 st.set_page_config(page_title="Plantões", layout="wide", page_icon=":material/medical_services:")
 
@@ -46,9 +46,32 @@ page_header(
 # Inicialização (só uma vez)
 if "plantoes_initialized" not in st.session_state:
     st.session_state.plantoes_initialized = True
-    store = load_store()
-    st.session_state.plantoes_data = store["plantoes"]
-    st.session_state.selected_year = sorted(store["plantoes"].keys(), reverse=True)[0]
+    try:
+        df_plantoes = load_plantoes()
+        # Converte DataFrame para estrutura esperada {ano: {meses: [...], quantidades: [...]}}
+        plantoes_dict = {}
+        if not df_plantoes.empty:
+            for ano in df_plantoes["ano"].unique():
+                df_ano = df_plantoes[df_plantoes["ano"] == ano].sort_values("mes")
+                meses_list = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+                quantidades_list = [0] * 12
+                for _, row in df_ano.iterrows():
+                    mes_idx = int(row["mes"]) - 1
+                    quantidades_list[mes_idx] = int(row["quantidade"])
+                plantoes_dict[int(ano)] = {"meses": meses_list, "quantidades": quantidades_list}
+        else:
+            plantoes_dict = {2026: {"meses": ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                                              "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"],
+                                   "quantidades": [0] * 12}}
+        st.session_state.plantoes_data = plantoes_dict
+        st.session_state.selected_year = sorted(plantoes_dict.keys(), reverse=True)[0]
+    except Exception as e:
+        st.error(f"Erro ao carregar plantões: {e}")
+        st.session_state.plantoes_data = {2026: {"meses": ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                                                           "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"],
+                                                 "quantidades": [0] * 12}}
+        st.session_state.selected_year = 2026
 
 # Seleção de ano
 years = sorted(st.session_state.plantoes_data.keys(), reverse=True)
@@ -85,26 +108,50 @@ with ui_card("Quantidades por mês", "Edite os plantões e clique em Salvar.", l
         submitted = st.form_submit_button("Salvar alterações", type="primary")
         
         if submitted:
-            plantoes_list = [float(x or 0) for x in df_edit["Plantões"].tolist()]
-            meses_list = df_edit["Mês"].astype(str).tolist()
-            
-            # Atualiza dados
-            new_data = st.session_state.plantoes_data.copy()
-            new_data[aba] = {
-                "meses": meses_list,
-                "quantidades": plantoes_list
-            }
-            
-            # Salva
-            st.session_state.plantoes_data = new_data
-            
-            # Persiste no JSON
-            store = load_store()
-            store["plantoes"] = new_data
-            save_store(store)
-            
-            st.success("Plantões salvos com sucesso!")
-            st.rerun()
+            try:
+                plantoes_list = [float(x or 0) for x in df_edit["Plantões"].tolist()]
+                meses_list = df_edit["Mês"].astype(str).tolist()
+                
+                # Atualiza dados no session_state
+                new_data = st.session_state.plantoes_data.copy()
+                new_data[aba] = {
+                    "meses": meses_list,
+                    "quantidades": plantoes_list
+                }
+                st.session_state.plantoes_data = new_data
+                
+                # Persiste no Supabase (salva cada mês)
+                for mes_idx, quantidade in enumerate(plantoes_list):
+                    mes_num = mes_idx + 1
+                    if quantidade > 0:
+                        # Verifica se já existe
+                        df_existing = load_plantoes(ano=aba)
+                        existing_row = df_existing[(df_existing["ano"] == aba) & (df_existing["mes"] == mes_num)]
+                        
+                        # Calcula valores
+                        valor_bruto = quantidade * 656.40
+                        imposto = valor_bruto * 0.05
+                        valor_liquido = valor_bruto - imposto
+                        
+                        plantao_data = {
+                            "ano": aba,
+                            "mes": mes_num,
+                            "quantidade": int(quantidade),
+                            "valor_bruto": valor_bruto,
+                            "imposto": imposto,
+                            "valor_liquido": valor_liquido,
+                            "entrada": False
+                        }
+                        
+                        if not existing_row.empty:
+                            update_plantao(int(existing_row.iloc[0]["id"]), plantao_data)
+                        else:
+                            insert_plantao(plantao_data)
+                
+                st.success("✅ Plantões salvos com sucesso!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Erro ao salvar: {e}")
 
 # === RENDERIZAÇÃO (leitura apenas) ===
 block = st.session_state.plantoes_data[aba]

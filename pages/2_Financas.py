@@ -22,7 +22,7 @@ from organizador.financas_table import (
     ensure_tipo_column,
     format_brl,
 )
-from organizador.store import DEFAULT_MONTHS_PT, financas_key, load_store, save_store
+from organizador.store import DEFAULT_MONTHS_PT, financas_key
 from organizador.ui import (
     empty_state,
     inject_dashboard_theme,
@@ -33,6 +33,8 @@ from organizador.ui import (
     table_wrap_end,
     ui_card,
 )
+from services.financas_service import load_financas, insert_financa, update_financa, delete_financa
+from services.custos_fixos_service import load_custos_fixos, insert_custo_fixo, update_custo_fixo, delete_custo_fixo
 
 st.set_page_config(page_title="Finanças", layout="wide", page_icon=":material/account_balance_wallet:")
 
@@ -63,9 +65,45 @@ page_header(
 # Inicialização
 if "financas_initialized" not in st.session_state:
     st.session_state.financas_initialized = True
-    store = load_store()
-    st.session_state.financas_data = store["financas"].copy()
-    st.session_state.custos_fixos_data = store.get("custos_fixos", []).copy()
+    try:
+        # Carrega finanças do Supabase e converte para formato esperado {key: [...]}
+        df_financas = load_financas()
+        financas_dict = {}
+        if not df_financas.empty:
+            for _, row in df_financas.iterrows():
+                key = financas_key(int(row["ano"]), int(row["mes"]))
+                if key not in financas_dict:
+                    financas_dict[key] = []
+                financas_dict[key].append({
+                    "id": int(row["id"]),
+                    "titulo": str(row["descricao"]),
+                    "valor": float(row["valor"]),
+                    "tipo": "Receita" if row["tipo"] == "receita" else "Despesa",
+                    "resolvido": False
+                })
+        st.session_state.financas_data = financas_dict
+        
+        # Carrega custos fixos
+        df_custos = load_custos_fixos()
+        custos_list = []
+        if not df_custos.empty:
+            for _, row in df_custos.iterrows():
+                custos_list.append({
+                    "id": int(row["id"]),
+                    "titulo": str(row["descricao"]),
+                    "valor": float(row["valor"]),
+                    "tipo_receita_despesa": "Receita" if row["tipo"] == "receita" else "Despesa",
+                    "modo": LABEL_FIXO if row["tipo"] == "fixo" else LABEL_PARCELADO,
+                    COL_MES: int(row.get("dia_vencimento", 1)),
+                    COL_ANO: 2026,
+                    COL_PARCELAS: int(row.get("total_parcelas", 0))
+                })
+        st.session_state.custos_fixos_data = custos_list
+    except Exception as e:
+        st.error(f"Erro ao carregar dados: {e}")
+        st.session_state.financas_data = {}
+        st.session_state.custos_fixos_data = []
+    
     st.session_state.selected_mes_idx = 4
     st.session_state.selected_ano = 2026
 
@@ -157,19 +195,37 @@ with st.expander("Custos fixos e parcelados (todos os meses)", expanded=False):
         submitted_cf = st.form_submit_button("💾 Salvar custos fixos", type="primary")
         
         if submitted_cf:
-            cf_edited = ensure_custos_fixos_editor_df(cf_edited)
-            cf_recs = filter_custos_fixos_records(df_to_custos_fixos_records(cf_edited))
-            
-            # Atualiza session_state
-            st.session_state.custos_fixos_data = cf_recs.copy()
-            
-            # Persiste
-            store = load_store()
-            store["custos_fixos"] = cf_recs
-            save_store(store)
-            
-            st.success("Custos fixos salvos!")
-            st.rerun()
+            try:
+                cf_edited = ensure_custos_fixos_editor_df(cf_edited)
+                cf_recs = filter_custos_fixos_records(df_to_custos_fixos_records(cf_edited))
+                
+                # Atualiza session_state
+                st.session_state.custos_fixos_data = cf_recs.copy()
+                
+                # Persiste no Supabase
+                # Primeiro deleta todos os existentes (simplificação)
+                df_existing = load_custos_fixos()
+                for _, row in df_existing.iterrows():
+                    delete_custo_fixo(int(row["id"]))
+                
+                # Insere os novos
+                for rec in cf_recs:
+                    custo_data = {
+                        "descricao": rec["titulo"],
+                        "tipo": "receita" if rec["tipo_receita_despesa"] == "Receita" else "despesa",
+                        "valor": float(rec["valor"]),
+                        "entrada": False,
+                        "dia_vencimento": int(rec.get(COL_MES, 1)),
+                        "parcela_atual": 1,
+                        "total_parcelas": int(rec.get(COL_PARCELAS, 0)),
+                        "ativo": True
+                    }
+                    insert_custo_fixo(custo_data)
+                
+                st.success("✅ Custos fixos salvos!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Erro ao salvar: {e}")
 
 # === RECORRÊNCIAS DESTE MÊS (somente leitura) ===
 cf_recs = st.session_state.custos_fixos_data
@@ -260,33 +316,50 @@ with ui_card("Lançamentos do mês", "Adicione receitas e despesas e clique em S
         submitted_lanc = st.form_submit_button("💾 Salvar lançamentos", type="primary")
         
         if submitted_lanc:
-            # Garante tipo correto
-            edited_lancamentos = ensure_tipo_column(edited_lancamentos)
-            
-            # Converte para records
-            records_para_salvar = []
-            for idx, row in edited_lancamentos.iterrows():
-                records_para_salvar.append({
-                    "titulo": str(row.get("Título", "")).strip(),
-                    "valor": float(row.get("Valor (R$)", 0.0)),
-                    "tipo": str(row.get("Tipo", "Despesa")),
-                    "resolvido": bool(row.get("Resolvido", False)),
-                })
-            
-            # Cria nova estrutura
-            new_financas = st.session_state.financas_data.copy()
-            new_financas[key] = records_para_salvar
-            
-            # Substitui no session_state
-            st.session_state.financas_data = new_financas
-            
-            # Persiste
-            store = load_store()
-            store["financas"] = new_financas
-            save_store(store)
-            
-            st.success("Lançamentos salvos!")
-            st.rerun()
+            try:
+                # Garante tipo correto
+                edited_lancamentos = ensure_tipo_column(edited_lancamentos)
+                
+                # Converte para records
+                records_para_salvar = []
+                for idx, row in edited_lancamentos.iterrows():
+                    records_para_salvar.append({
+                        "titulo": str(row.get("Título", "")).strip(),
+                        "valor": float(row.get("Valor (R$)", 0.0)),
+                        "tipo": str(row.get("Tipo", "Despesa")),
+                        "resolvido": bool(row.get("Resolvido", False)),
+                    })
+                
+                # Atualiza session_state
+                new_financas = st.session_state.financas_data.copy()
+                new_financas[key] = records_para_salvar
+                st.session_state.financas_data = new_financas
+                
+                # Persiste no Supabase
+                # Deleta lançamentos antigos deste mês
+                df_existing = load_financas(ano=ano, mes=mes_num)
+                for _, row in df_existing.iterrows():
+                    delete_financa(int(row["id"]))
+                
+                # Insere novos lançamentos
+                for rec in records_para_salvar:
+                    if rec["titulo"].strip():  # Só salva se tiver título
+                        financa_data = {
+                            "ano": ano,
+                            "mes": mes_num,
+                            "data": f"{ano}-{mes_num:02d}-01",
+                            "descricao": rec["titulo"],
+                            "tipo": "receita" if rec["tipo"] == "Receita" else "despesa",
+                            "valor": float(rec["valor"]),
+                            "entrada": False,
+                            "categoria": "Manual"
+                        }
+                        insert_financa(financa_data)
+                
+                st.success("✅ Lançamentos salvos!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Erro ao salvar: {e}")
 
 # === TOTAIS (somente leitura) ===
 # Recarrega os dados salvos para exibição

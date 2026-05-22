@@ -6,7 +6,6 @@ import streamlit as st
 from organizador.auth import init_auth_state, is_authenticated, logout
 from organizador.financas_table import format_brl
 from organizador.lucide import inline_svg
-from organizador.store import load_store, save_store
 from organizador.ui import (
     inject_dashboard_theme,
     page_header,
@@ -16,6 +15,7 @@ from organizador.ui import (
     table_wrap_end,
     ui_card,
 )
+from services.casamento_service import load_casamento, insert_gasto_casamento, update_gasto_casamento, delete_gasto_casamento
 
 st.set_page_config(page_title="Meu Casamento", layout="wide", page_icon="💍")
 
@@ -46,49 +46,54 @@ page_header(
 # Inicialização
 if "casamento_initialized" not in st.session_state:
     st.session_state.casamento_initialized = True
-    store = load_store()
-    
-    raw_casamento = store.get("casamento", [])
-    if not isinstance(raw_casamento, list):
-        raw_casamento = []
-    
-    # Só cria itens padrão na primeira vez
-    casamento_user_initialized = store.get("casamento_user_initialized", False)
-    
-    if not raw_casamento and not casamento_user_initialized:
-        # Cria dados iniciais
-        st.session_state.casamento_data = [
-            {
-                "titulo": "Buffet",
-                "categoria": "Alimentação",
-                "orcamento": 15000.0,
-                "valor_fechado": 0.0,
-                "parcelas": 1,
-                "pago": False,
-            },
-            {
-                "titulo": "Decoração",
-                "categoria": "Decoração",
-                "orcamento": 8000.0,
-                "valor_fechado": 0.0,
-                "parcelas": 1,
-                "pago": False,
-            },
-            {
-                "titulo": "Fotografia",
-                "categoria": "Foto/Vídeo",
-                "orcamento": 5000.0,
-                "valor_fechado": 0.0,
-                "parcelas": 1,
-                "pago": False,
-            },
-        ]
-    else:
-        # Garante que todos os registros têm categoria
-        for item in raw_casamento:
-            if "categoria" not in item:
-                item["categoria"] = "Outros"
-        st.session_state.casamento_data = raw_casamento.copy()
+    try:
+        df_casamento = load_casamento()
+        casamento_list = []
+        
+        if not df_casamento.empty:
+            for _, row in df_casamento.iterrows():
+                casamento_list.append({
+                    "id": int(row["id"]),
+                    "titulo": str(row["item"]),
+                    "categoria": str(row["categoria"]),
+                    "orcamento": float(row["orcamento"]),
+                    "valor_fechado": float(row["valor_pago"]),
+                    "parcelas": 1,
+                    "pago": row["status"] == "pago",
+                })
+        else:
+            # Dados iniciais
+            casamento_list = [
+                {
+                    "titulo": "Buffet",
+                    "categoria": "Alimentação",
+                    "orcamento": 15000.0,
+                    "valor_fechado": 0.0,
+                    "parcelas": 1,
+                    "pago": False,
+                },
+                {
+                    "titulo": "Decoração",
+                    "categoria": "Decoração",
+                    "orcamento": 8000.0,
+                    "valor_fechado": 0.0,
+                    "parcelas": 1,
+                    "pago": False,
+                },
+                {
+                    "titulo": "Fotografia",
+                    "categoria": "Foto/Vídeo",
+                    "orcamento": 5000.0,
+                    "valor_fechado": 0.0,
+                    "parcelas": 1,
+                    "pago": False,
+                },
+            ]
+        
+        st.session_state.casamento_data = casamento_list
+    except Exception as e:
+        st.error(f"Erro ao carregar dados: {e}")
+        st.session_state.casamento_data = []
 
 # Categorias disponíveis
 CATEGORIAS = [
@@ -206,36 +211,51 @@ with ui_card("Orçamento do Casamento", "Gerencie fornecedores, valores e pagame
         submitted = st.form_submit_button("Salvar alterações", type="primary", use_container_width=False)
         
         if submitted:
-            # Converte para records
-            records_casamento = []
-            for idx, row in edited_casamento.iterrows():
-                categoria = str(row.get("Categoria", "Outros"))
-                if categoria not in CATEGORIAS:
-                    categoria = "Outros"
+            try:
+                # Converte para records
+                records_casamento = []
+                for idx, row in edited_casamento.iterrows():
+                    categoria = str(row.get("Categoria", "Outros"))
+                    if categoria not in CATEGORIAS:
+                        categoria = "Outros"
+                    
+                    records_casamento.append({
+                        "titulo": str(row.get("Fornecedor/Item", "")).strip(),
+                        "categoria": categoria,
+                        "orcamento": float(row.get("Orçamento (R$)", 0.0)),
+                        "valor_fechado": float(row.get("Valor Fechado (R$)", 0.0)),
+                        "parcelas": int(row.get("Parcelas", 1)),
+                        "pago": bool(row.get("✓ Pago", False)),
+                    })
                 
-                records_casamento.append({
-                    "titulo": str(row.get("Fornecedor/Item", "")).strip(),
-                    "categoria": categoria,
-                    "orcamento": float(row.get("Orçamento (R$)", 0.0)),
-                    "valor_fechado": float(row.get("Valor Fechado (R$)", 0.0)),
-                    "parcelas": int(row.get("Parcelas", 1)),
-                    "pago": bool(row.get("✓ Pago", False)),
-                })
-            
-            # Cria nova estrutura
-            new_casamento = records_casamento.copy()
-            
-            # Substitui no session_state
-            st.session_state.casamento_data = new_casamento
-            
-            # Persiste
-            store = load_store()
-            store["casamento"] = new_casamento
-            store["casamento_user_initialized"] = True  # Marca que usuário já salvou dados
-            save_store(store)
-            
-            st.success("Orçamento do casamento salvo com sucesso!")
-            st.rerun()
+                # Atualiza session_state
+                st.session_state.casamento_data = records_casamento.copy()
+                
+                # Persiste no Supabase
+                # Deleta todos os existentes
+                df_existing = load_casamento()
+                for _, row in df_existing.iterrows():
+                    delete_gasto_casamento(int(row["id"]))
+                
+                # Insere novos
+                for rec in records_casamento:
+                    if rec["titulo"].strip():  # Só salva se tiver título
+                        status = "pago" if rec["pago"] else ("parcial" if rec["valor_fechado"] > 0 else "pendente")
+                        gasto_data = {
+                            "categoria": rec["categoria"],
+                            "item": rec["titulo"],
+                            "orcamento": float(rec["orcamento"]),
+                            "valor_pago": float(rec["valor_fechado"]),
+                            "entrada": False,
+                            "status": status,
+                            "observacoes": ""
+                        }
+                        insert_gasto_casamento(gasto_data)
+                
+                st.success("✅ Orçamento do casamento salvo com sucesso!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Erro ao salvar: {e}")
 
 # === CÁLCULOS E TOTAIS (somente leitura dos dados salvos) ===
 display_data = st.session_state.casamento_data
