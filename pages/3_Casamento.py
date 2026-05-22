@@ -347,7 +347,7 @@ with ui_card("Resumo Financeiro", "Visão geral do investimento no casamento.", 
     )
     
     render_kpi_row(
-        ("💰 Entradas", format_brl(total_entradas), "pos" if total_entradas > 0 else ""),
+        ("Entradas", format_brl(total_entradas), "pos" if total_entradas > 0 else ""),
         ("A Pagar", format_brl(total_a_pagar), "neg" if total_a_pagar > 0 else "pos"),
         ("Contratos", f"{itens_fechados}/{itens_totais}", "accent"),
     )
