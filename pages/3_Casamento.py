@@ -242,15 +242,15 @@ with ui_card("Orçamento do Casamento", "Gerencie fornecedores, valores e pagame
                     if categoria not in CATEGORIAS:
                         categoria = "Outros"
                     
-                records_casamento.append({
-                    "titulo": str(row.get("Fornecedor/Item", "")).strip(),
-                    "categoria": categoria,
-                    "orcamento": float(row.get("Orçamento (R$)", 0.0)),
-                    "valor_fechado": float(row.get("Valor Fechado (R$)", 0.0)),
-                    "entrada_valor": float(row.get("Entrada (R$)", 0.0)),
-                    "parcelas": int(row.get("Parcelas", 1)),
-                    "pago": bool(row.get("✓ Pago", False)),
-                })
+                    records_casamento.append({
+                        "titulo": str(row.get("Fornecedor/Item", "")).strip(),
+                        "categoria": categoria,
+                        "orcamento": float(row.get("Orçamento (R$)", 0.0)),
+                        "valor_fechado": float(row.get("Valor Fechado (R$)", 0.0)),
+                        "entrada_valor": float(row.get("Entrada (R$)", 0.0)),
+                        "parcelas": int(row.get("Parcelas", 1)),
+                        "pago": bool(row.get("✓ Pago", False)),
+                    })
                 
                 # Atualiza session_state
                 st.session_state.casamento_data = records_casamento.copy()

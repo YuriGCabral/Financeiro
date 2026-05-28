@@ -212,7 +212,7 @@ with st.expander("Custos fixos e parcelados (todos os meses)", expanded=False):
                 for rec in cf_recs:
                     custo_data = {
                         "descricao": rec["titulo"],
-                        "tipo": "receita" if rec["tipo_receita_despesa"] == "Receita" else "despesa",
+                        "tipo": "fixo" if rec.get("modo") == "fixo" else "parcelado",
                         "valor": float(rec["valor"]),
                         "entrada": False,
                         "dia_vencimento": int(rec.get(COL_MES, 1)),
