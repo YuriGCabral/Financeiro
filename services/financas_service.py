@@ -28,7 +28,7 @@ def load_financas(ano: int | None = None, mes: int | None = None) -> pd.DataFram
         else:
             return pd.DataFrame(columns=[
                 "id", "ano", "mes", "data", "descricao", "tipo", 
-                "valor", "entrada", "categoria", "created_at"
+                "valor", "entrada", "categoria", "resolvido", "created_at"
             ])
     except Exception as e:
         raise Exception(f"Erro ao carregar finanças: {e}")

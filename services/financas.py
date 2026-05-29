@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
+import calendar
 from typing import Any
 
 import pandas as pd
@@ -10,47 +11,52 @@ import pandas as pd
 from db import dao
 
 
-def get_todas_transacoes_df() -> pd.DataFrame:
-    """Retorna todas as transações como DataFrame pandas.
-    
-    Returns:
-        DataFrame com colunas: id, data, descricao, valor, tipo, categoria
-    """
-    transacoes = dao.get_transacoes()
-    
-    if not transacoes:
-        return pd.DataFrame(columns=["id", "data", "descricao", "valor", "tipo", "categoria"])
-    
-    df = pd.DataFrame(transacoes)
-    
-    # Converte tipos
-    df["data"] = pd.to_datetime(df["data"]).dt.date
-    df["valor"] = df["valor"].astype(float)
-    
+COLUNAS_FINANCAS = ["id", "ano", "mes", "titulo", "valor", "tipo"]
+
+
+def _criar_dataframe_financas(registros: list[dict[str, Any]]) -> pd.DataFrame:
+    if not registros:
+        return pd.DataFrame(columns=COLUNAS_FINANCAS + ["data_ref"])
+
+    df = pd.DataFrame(registros)
+
+    for col in COLUNAS_FINANCAS:
+        if col not in df.columns:
+            df[col] = None
+
+    df = df[COLUNAS_FINANCAS].copy()
+    df["ano"] = pd.to_numeric(df["ano"], errors="coerce").astype("Int64")
+    df["mes"] = pd.to_numeric(df["mes"], errors="coerce").astype("Int64")
+    df["valor"] = pd.to_numeric(df["valor"], errors="coerce").fillna(0.0)
+
+    df["data_ref"] = pd.to_datetime(
+        dict(year=df["ano"], month=df["mes"], day=1),
+        errors="coerce"
+    )
+
     return df
 
 
-def calcular_totais() -> dict[str, float]:
-    """Calcula totais de receitas, despesas e saldo.
-    
-    Returns:
-        Dicionário com:
-        - total_receitas: Soma de todas as receitas
-        - total_despesas: Soma de todas as despesas
-        - saldo: Diferença entre receitas e despesas
-    """
+def get_todas_transacoes_df() -> pd.DataFrame:
+    """Retorna todos os lançamentos financeiros como DataFrame pandas."""
     transacoes = dao.get_transacoes()
-    
+    return _criar_dataframe_financas(transacoes)
+
+
+def calcular_totais() -> dict[str, float]:
+    """Calcula totais de receitas, despesas e saldo."""
+    transacoes = dao.get_transacoes()
+
     total_receitas = sum(
-        t["valor"] for t in transacoes if t["tipo"] == "Receita"
+        float(t["valor"]) for t in transacoes if t["tipo"] == "Receita"
     )
-    
+
     total_despesas = sum(
-        t["valor"] for t in transacoes if t["tipo"] == "Despesa"
+        float(t["valor"]) for t in transacoes if t["tipo"] == "Despesa"
     )
-    
+
     saldo = total_receitas - total_despesas
-    
+
     return {
         "total_receitas": total_receitas,
         "total_despesas": total_despesas,
@@ -58,209 +64,148 @@ def calcular_totais() -> dict[str, float]:
     }
 
 
-def calcular_por_categoria() -> pd.DataFrame:
-    """Calcula totais agrupados por categoria.
-    
-    Returns:
-        DataFrame com colunas: categoria, tipo, total
-    """
+def calcular_por_tipo() -> pd.DataFrame:
+    """Calcula totais agrupados por tipo."""
     transacoes = dao.get_transacoes()
-    
+
     if not transacoes:
-        return pd.DataFrame(columns=["categoria", "tipo", "total"])
-    
-    df = pd.DataFrame(transacoes)
-    
-    # Agrupa por categoria e tipo
-    resumo = df.groupby(["categoria", "tipo"])["valor"].sum().reset_index()
-    resumo.columns = ["categoria", "tipo", "total"]
-    
-    # Ordena por total decrescente
-    resumo = resumo.sort_values("total", ascending=False)
-    
-    return resumo
+        return pd.DataFrame(columns=["tipo", "total"])
+
+    df = _criar_dataframe_financas(transacoes)
+    resumo = df.groupby("tipo", dropna=False)["valor"].sum().reset_index()
+    resumo.columns = ["tipo", "total"]
+
+    return resumo.sort_values("total", ascending=False)
 
 
 def calcular_por_mes() -> pd.DataFrame:
-    """Calcula totais agrupados por mês.
-    
-    Returns:
-        DataFrame com colunas: mes, total_receitas, total_despesas, saldo
-    """
+    """Calcula totais agrupados por mês."""
     transacoes = dao.get_transacoes()
-    
+
     if not transacoes:
         return pd.DataFrame(columns=["mes", "total_receitas", "total_despesas", "saldo"])
-    
-    df = pd.DataFrame(transacoes)
-    df["data"] = pd.to_datetime(df["data"])
-    df["mes"] = df["data"].dt.to_period("M")
-    
-    # Separa receitas e despesas
-    receitas = df[df["tipo"] == "Receita"].groupby("mes")["valor"].sum()
-    despesas = df[df["tipo"] == "Despesa"].groupby("mes")["valor"].sum()
-    
-    # Combina em um único DataFrame
+
+    df = _criar_dataframe_financas(transacoes)
+
+    receitas = df[df["tipo"] == "Receita"].groupby("data_ref")["valor"].sum()
+    despesas = df[df["tipo"] == "Despesa"].groupby("data_ref")["valor"].sum()
+
     resumo = pd.DataFrame({
         "total_receitas": receitas,
         "total_despesas": despesas,
     }).fillna(0)
-    
+
     resumo["saldo"] = resumo["total_receitas"] - resumo["total_despesas"]
     resumo = resumo.reset_index()
-    resumo["mes"] = resumo["mes"].astype(str)
-    
+    resumo["mes"] = resumo["data_ref"].dt.strftime("%Y-%m")
+    resumo = resumo[["mes", "total_receitas", "total_despesas", "saldo"]]
+
     return resumo.sort_values("mes", ascending=False)
 
 
-def get_categorias_disponiveis() -> list[str]:
-    """Retorna lista de categorias únicas já usadas.
-    
-    Returns:
-        Lista ordenada de categorias
-    """
+def get_anos_disponiveis() -> list[int]:
+    """Retorna lista de anos únicos já usados."""
     transacoes = dao.get_transacoes()
-    
-    categorias = set(t["categoria"] for t in transacoes)
-    
-    return sorted(categorias)
+
+    anos = {
+        int(t["ano"])
+        for t in transacoes
+        if t.get("ano") is not None
+    }
+
+    return sorted(anos)
 
 
 def validar_transacao(
-    data: date | str,
-    descricao: str,
+    ano: int | str,
+    mes: int | str,
+    titulo: str,
     valor: float | str,
     tipo: str,
-    categoria: str,
 ) -> tuple[bool, str]:
-    """Valida dados de uma transação.
-    
-    Args:
-        data: Data da transação
-        descricao: Descrição
-        valor: Valor
-        tipo: Tipo ('Receita' ou 'Despesa')
-        categoria: Categoria
-    
-    Returns:
-        Tupla (valido, mensagem_erro)
-    """
-    # Valida data
-    if not data:
-        return False, "Data é obrigatória"
-    
-    if isinstance(data, str):
-        try:
-            datetime.strptime(data, "%Y-%m-%d")
-        except ValueError:
-            return False, "Data inválida. Use formato YYYY-MM-DD"
-    
-    # Valida descrição
-    if not descricao or not str(descricao).strip():
-        return False, "Descrição é obrigatória"
-    
-    # Valida valor
+    """Valida dados de um lançamento financeiro."""
+    try:
+        ano_int = int(ano)
+        if ano_int < 2000 or ano_int > 2100:
+            return False, "Ano inválido"
+    except (ValueError, TypeError):
+        return False, "Ano inválido"
+
+    try:
+        mes_int = int(mes)
+        if mes_int < 1 or mes_int > 12:
+            return False, "Mês deve estar entre 1 e 12"
+    except (ValueError, TypeError):
+        return False, "Mês inválido"
+
+    if not titulo or not str(titulo).strip():
+        return False, "Título é obrigatório"
+
     try:
         valor_float = float(valor)
         if valor_float <= 0:
             return False, "Valor deve ser maior que zero"
     except (ValueError, TypeError):
         return False, "Valor inválido"
-    
-    # Valida tipo
+
     if tipo not in ("Receita", "Despesa"):
         return False, "Tipo deve ser 'Receita' ou 'Despesa'"
-    
-    # Valida categoria
-    if not categoria or not str(categoria).strip():
-        return False, "Categoria é obrigatória"
-    
+
     return True, ""
 
 
 def criar_transacao(
-    data: date | str,
-    descricao: str,
+    ano: int,
+    mes: int,
+    titulo: str,
     valor: float,
     tipo: str,
-    categoria: str,
-) -> tuple[bool, str, int | None]:
-    """Cria uma nova transação com validação.
-    
-    Args:
-        data: Data da transação
-        descricao: Descrição
-        valor: Valor
-        tipo: Tipo
-        categoria: Categoria
-    
-    Returns:
-        Tupla (sucesso, mensagem, id_criado)
-    """
-    # Valida
-    valido, erro = validar_transacao(data, descricao, valor, tipo, categoria)
+) -> tuple[bool, str, Any | None]:
+    """Cria um novo lançamento com validação."""
+    valido, erro = validar_transacao(ano, mes, titulo, valor, tipo)
     if not valido:
         return False, erro, None
-    
-    # Cria no banco
+
     try:
-        transacao_id = dao.add_transacao(data, descricao, valor, tipo, categoria)
-        return True, "Transação criada com sucesso!", transacao_id
+        transacao_id = dao.add_transacao(ano, mes, titulo, valor, tipo)
+        return True, "Lançamento criado com sucesso!", transacao_id
     except Exception as e:
-        return False, f"Erro ao criar transação: {str(e)}", None
+        return False, f"Erro ao criar lançamento: {str(e)}", None
 
 
 def atualizar_transacao(
-    transacao_id: int,
-    data: date | str,
-    descricao: str,
+    transacao_id: Any,
+    ano: int,
+    mes: int,
+    titulo: str,
     valor: float,
     tipo: str,
-    categoria: str,
 ) -> tuple[bool, str]:
-    """Atualiza uma transação existente com validação.
-    
-    Args:
-        transacao_id: ID da transação
-        data: Nova data
-        descricao: Nova descrição
-        valor: Novo valor
-        tipo: Novo tipo
-        categoria: Nova categoria
-    
-    Returns:
-        Tupla (sucesso, mensagem)
-    """
-    # Valida
-    valido, erro = validar_transacao(data, descricao, valor, tipo, categoria)
+    """Atualiza um lançamento existente com validação."""
+    valido, erro = validar_transacao(ano, mes, titulo, valor, tipo)
     if not valido:
         return False, erro
-    
-    # Atualiza no banco
+
     try:
-        sucesso = dao.update_transacao(transacao_id, data, descricao, valor, tipo, categoria)
+        sucesso = dao.update_transacao(transacao_id, ano, mes, titulo, valor, tipo)
         if sucesso:
-            return True, "Transação atualizada com sucesso!"
-        else:
-            return False, "Transação não encontrada"
+            return True, "Lançamento atualizado com sucesso!"
+        return False, "Lançamento não encontrado"
     except Exception as e:
-        return False, f"Erro ao atualizar transação: {str(e)}"
+        return False, f"Erro ao atualizar lançamento: {str(e)}"
 
 
-def deletar_transacao(transacao_id: int) -> tuple[bool, str]:
-    """Deleta uma transação.
-    
-    Args:
-        transacao_id: ID da transação
-    
-    Returns:
-        Tupla (sucesso, mensagem)
-    """
+def deletar_transacao(transacao_id: Any) -> tuple[bool, str]:
+    """Deleta um lançamento."""
     try:
         sucesso = dao.delete_transacao(transacao_id)
         if sucesso:
-            return True, "Transação deletada com sucesso!"
-        else:
-            return False, "Transação não encontrada"
+            return True, "Lançamento deletado com sucesso!"
+        return False, "Lançamento não encontrado"
     except Exception as e:
-        return False, f"Erro ao deletar transação: {str(e)}"
+        return False, f"Erro ao deletar lançamento: {str(e)}"
+
+
+def formatar_mes_nome(ano: int, mes: int) -> str:
+    """Retorna nome do mês/ano no formato MM/YYYY ou nome do mês."""
+    return f"{int(mes):02d}/{int(ano)}"

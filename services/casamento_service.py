@@ -21,7 +21,7 @@ def load_casamento() -> pd.DataFrame:
         else:
             return pd.DataFrame(columns=[
                 "id", "categoria", "item", "orcamento", "valor_pago",
-                "entrada", "valor_restante", "status", "observacoes", "created_at"
+                "entrada", "parcelas", "status", "observacoes", "created_at"
             ])
     except Exception as e:
         raise Exception(f"Erro ao carregar gastos do casamento: {e}")
