@@ -1,25 +1,9 @@
-"""Camada de serviços com lógica de negócio."""
+"""Pacote `services` — submódulos são importados diretamente pelos consumidores.
 
-from services.financas import (
-    atualizar_transacao,
-    calcular_por_categoria,
-    calcular_por_mes,
-    calcular_totais,
-    criar_transacao,
-    deletar_transacao,
-    get_categorias_disponiveis,
-    get_todas_transacoes_df,
-    validar_transacao,
-)
+Evita importações top-level para prevenir erros/circulares quando um
+submódulo (ex: `services.plantoes_service`) é importado. Use imports explícitos
+como `from services.financas import ...` ou `from services import financas` quando
+necessário em runtime.
+"""
 
-__all__ = [
-    "atualizar_transacao",
-    "calcular_por_categoria",
-    "calcular_por_mes",
-    "calcular_totais",
-    "criar_transacao",
-    "deletar_transacao",
-    "get_categorias_disponiveis",
-    "get_todas_transacoes_df",
-    "validar_transacao",
-]
+__all__ = []
